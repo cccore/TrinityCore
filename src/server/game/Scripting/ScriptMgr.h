@@ -870,6 +870,173 @@ class GroupScript : public ScriptObject
         virtual void OnDisband(Group* /*group*/) { }
 };
 
+class LuaVal;
+
+// ##################### Abstract AIO handler script #####################
+// Inherit AIOScript to make an AIO handler script
+//
+// See smallfork_cpp at https://github.com/Rochet2/smallfolk_cpp for
+// reference on how to use LuaVal
+//
+// Example of use:
+//
+// class ExampleAIOScript : public AIOScript
+// {
+// public:
+// 	ExampleAIOScript()
+// 		: AIOScript("ExampleScriptName")
+// 	{
+// 		using namespace std::placeholders;
+// 	
+// 		// Loads addon files to addons list and sends them on AIO client initialization
+// 		// Looks for the file in path config AIO.ClientScriptPath
+// 		AddAddon(World::AIOAddon("ExampleAddon", "example_addon.lua"));
+// 		
+// 		// You can also add addons to be sent to players with specific permission
+// 		AddAddon(World::AIOAddon("AnotherAddon", "example_addon.lua", 192)); //192 refers to admin RBAC permission
+// 
+// 		// Handler function signature: void HandlerFunction(Player *sender, const LuaVal &args)
+// 		AddHandler("Print", std::bind(&ExampleAIOScript::HandlePrint, this, _1, _2));
+// 		AddHandler("Save", std::bind(&ExampleAIOScript::HandleSave, this, _1, _2));
+// 
+// 		// Initialization handler and arguments
+// 		AddInitArgs("ExampleScriptName", "Init", std::bind(&ExampleAIOScript::InitArg, this, _1), std::bind(&ExampleAIOScript::InitArg, this, _1));
+// 		//Adds additional argument to send to handler
+// 		AddInitArgs("ExampleScriptName", "Init", std::bind(&ExampleAIOScript::InitArg2, this, _1));
+// 		AddInitArgs("AnotherScript", "InitB"); //Arguments are not necessary
+// 	}
+// 
+// 	void HandlePrint(Player *sender, const LuaVal &args)
+// 	{
+// 	    //LuaVal args in a handler function is always a table
+// 		//Handler arguments index starts from 4
+// 		LuaVal &InputVal = args[4];
+// 		LuaVal &SliderVal = args[5];
+// 
+// 		//MUST check if the value type is valid or else smallfolk_cpp will
+// 		//throw on obtaining that type
+// 		if(!InputVal.isstring() || !SliderVal.isnumber())
+// 		{
+// 			return;
+// 		}
+// 
+// 		sender->GetSession()->SendNotification("HandlePrint -> Stored String: %s, Input: %s, Slider Value: %f",
+// 			storedString.c_str(), InputVal.str().c_str(), SliderVal.num());
+// 	}
+// 
+// 	void HandleSave(Player *sender, const LuaVal &args)
+// 	{
+// 	    //LuaVal args in a handler function is always a table
+// 		//Handler arguments index starts from 4
+// 		LuaVal &SaveVal = args.get[4];
+// 
+// 		//MUST check if the value type is valid
+// 		if(!SaveVal.isstring())
+// 		{
+// 			return;
+// 		}
+// 
+// 		storedString = SaveVal.str();
+// 		sender->GetSession()->SendNotification("Saved");
+// 	}
+// 
+// 	LuaVal InitArg(Player *sender)
+// 	{
+// 		LuaVal arg = LuaVal(TTABLE);
+// 		arg.set("key", 12.3);
+// 		arg["key2"] = false;
+// 
+// 		return arg;
+// 	}
+// 
+// 	LuaVal InitArg2(Player *sender)
+// 	{
+// 		return "LuaVal will implicitly create a string LuaVal for this arg";
+// 	}
+// 
+// private:
+// 	std::string storedString;
+// };
+class AIOScript : public ScriptObject
+{
+    public:
+		~AIOScript();
+        bool IsDatabaseBound() const { return false; }
+
+		typedef std::function<void(Player*, const LuaVal&)> HandlerFunc;
+		typedef std::function<LuaVal(Player*)> ArgFunc;
+
+	protected:
+		// Registers an AIO Handler script of scriptName
+		AIOScript(const char *scriptName);
+
+		// Registers a handler function to call when handling
+		// handlerName of this script.
+		void AddHandler(const char *handlerName, HandlerFunc function);
+
+		// Adds a client side handler to call and adds arguments
+		// to sends with it for AIO client initialization.
+		//
+		// You can add additional arguments to the handler by
+		// calling this function again
+		void AddInitArgs(const std::string &scriptName, const std::string &handlerName,
+			ArgFunc a1 = ArgFunc(), ArgFunc a2 = ArgFunc(), ArgFunc a3 = ArgFunc(),
+			ArgFunc a4 = ArgFunc(), ArgFunc a5 = ArgFunc(), ArgFunc a6 = ArgFunc());
+
+		// Adds a WoW addon file to the list of addons with a unique
+		// addon name to send on AIO client initialization.
+		// Returns true if addon was added, false if addon name is taken.
+		//
+		// It is required to call World::ForceReloadPlayerAddons()
+		// if addons are added after server is fully initialized
+		// for online players to load the added addons.
+		bool AddAddon(const World::AIOAddon &addon);
+
+		// Returns pointer to an AIO script by its name and typename.
+		// Returns null if scriptName doesn't exist or typename was incorrect.
+		template<class ScriptClass>
+		ScriptClass *GetScript(const std::string &scriptName);
+
+		template<>
+		AIOScript *GetScript(const std::string &scriptName);
+
+	private:
+		void OnHandle(Player *sender, const std::string &scriptName, const std::string &handlerName, const LuaVal &args);
+
+		typedef std::unordered_map<std::string, HandlerFunc> HandlerMapType;
+		HandlerMapType _handlerMap;
+
+		typedef std::unordered_map<std::string, AIOScript*> AIOScriptByNameMap;
+		static AIOScriptByNameMap _scriptByNameMap;
+
+		friend class ScriptMgr;
+};
+
+class AIOHandlers : public AIOScript
+{
+	private:
+		AIOHandlers();
+		void HandleInit(Player *sender, const LuaVal &args);
+		void HandleError(Player *sender, const LuaVal &args);
+
+		struct InitHookInfo
+		{
+			std::string scriptName;
+			std::string handlerName;
+			std::list<AIOScript::ArgFunc> argsList;
+
+			InitHookInfo(const std::string &scriptName, const std::string &handlerName)
+				: scriptName(scriptName), handlerName(handlerName)
+			{ }
+		};
+
+		typedef std::list<InitHookInfo> HookListType;
+		HookListType _initHookList;
+
+		friend class ScriptMgr;
+		friend class AIOScript;
+};
+
 // Placed here due to ScriptRegistry::AddScript dependency.
 #define sScriptMgr ScriptMgr::instance()
 
@@ -886,6 +1053,7 @@ class GroupScript : public ScriptObject
 class ScriptMgr
 {
     friend class ScriptObject;
+	friend class AIOScript;
 
     private:
         ScriptMgr();
@@ -1137,9 +1305,14 @@ class ScriptMgr
         uint32 DecreaseScheduledScriptCount(size_t count) { return _scheduledScripts -= count; }
         bool IsScriptScheduled() const { return _scheduledScripts > 0; }
 
+	public: /* AIOScript */
+
+		void OnAddonMessage(Player *sender, const std::string &message);
+
     private:
 
         uint32 _scriptCount;
+		AIOHandlers *_aioHandlers;
 
         //atomic op counter for active scripts amount
         std::atomic<uint32> _scheduledScripts;

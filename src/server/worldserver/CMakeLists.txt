@@ -49,6 +49,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/dep/SFMT
   ${CMAKE_SOURCE_DIR}/dep/cppformat
   ${CMAKE_SOURCE_DIR}/dep/process
+  ${CMAKE_SOURCE_DIR}/dep/smallfolk_cpp
   ${CMAKE_SOURCE_DIR}/src/server/database
   ${CMAKE_SOURCE_DIR}/src/server/database/Database
   ${CMAKE_SOURCE_DIR}/src/server/database/Logging
@@ -207,9 +208,11 @@ endif()
 if( UNIX )
   install(TARGETS worldserver DESTINATION bin)
   install(FILES worldserver.conf.dist DESTINATION ${CONF_DIR})
+  install(DIRECTORY "lua_client_scripts" DESTINATION bin)
 elseif( WIN32 )
   install(TARGETS worldserver DESTINATION "${CMAKE_INSTALL_PREFIX}")
   install(FILES worldserver.conf.dist DESTINATION "${CMAKE_INSTALL_PREFIX}")
+  install(DIRECTORY "lua_client_scripts" DESTINATION "${CMAKE_INSTALL_PREFIX}")
 endif()
 
 # Generate precompiled header

@@ -3257,6 +3257,7 @@ Appender.Console=1,3,0
 Appender.Server=2,2,0,Server.log,w
 Appender.GM=2,2,15,gm/gm_%s.log
 Appender.DBErrors=2,2,0,DBErrors.log
+Appender.AIO=2,3,3,AIO/AIO_%s.log
 
 #  Logger config values: Given a logger "name"
 #    Logger.name
@@ -3281,6 +3282,7 @@ Logger.server=3,Console Server
 Logger.commands.gm=3,Console GM
 Logger.sql.sql=5,Console DBErrors
 Logger.sql.updates=3,Console Server
+Logger.AIO=3,Console AIO
 
 #Logger.achievement=3,Console Server
 #Logger.addon=3,Console Server
@@ -3381,3 +3383,35 @@ PacketSpoof.BanDuration = 86400
 
 #
 ###################################################################################################
+
+###################################################################################################
+#
+# AIO settings
+#
+#    AIO.prefix
+#        Prefix string used for AIO addon messages
+#        Default: "AIO"
+#
+#    AIO.MaxParts
+#        Maximum number of parts a client can send to server
+#        Each part can have maximum 255 bytes
+#        Default: 4
+#
+#    AIO.ClientScriptPath
+#        Path to client lua scripts to send to the client
+#        Default: "lua_client_scripts"
+#
+#    AIO.Obfuscate
+#        Whether to obfuscate before sending addon code
+#        Default: 1
+#
+#    AIO.Compress
+#        Whether to compress before sending addon code
+#        Default: 1
+#
+
+AIO.Prefix = "AIO"
+AIO.MaxParts = 4
+AIO.ClientScriptPath = "lua_client_scripts"
+AIO.Obfuscate = 1
+AIO.Compress = 1

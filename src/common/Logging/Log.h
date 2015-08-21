@@ -78,6 +78,21 @@ class Log
             write(std::move(msg));
         }
 
+		template<typename Format, typename... Args>
+		void outAIOMessage(uint32 account, LogLevel const level, Format&& fmt, Args&&... args)
+        {
+            if (!ShouldLog("AIO", level))
+                return;
+
+			std::unique_ptr<LogMessage> msg =
+				Trinity::make_unique<LogMessage>(level, "AIO",
+                    Trinity::StringFormat(std::forward<Format>(fmt), std::forward<Args>(args)...));
+
+			msg->param1 = account ? std::to_string(account) : "World";
+
+            write(std::move(msg));
+        }
+
         void outCharDump(char const* str, uint32 account_id, uint64 guid, char const* name);
 
         void SetRealmId(uint32 id);
