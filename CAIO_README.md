@@ -3,7 +3,7 @@
 CAIO is a server-client communication system for WoW AddOns. It is an extension of [AIO](https://github.com/Rochet2/AIO) to support C++ server side handling.
 AIO is designed for sending lua addons and data between players and server.
 
-Currently CAIO only supports TrinityCore 3.3.5 branch.
+Currently CAIO only supports TrinityCore 3.3.5 branch. [Compare and review](https://github.com/TrinityCore/TrinityCore/compare/3.3.5...SaiFi0102:CAIO-3.3.5).
 
 ## Supported AIO version
 
