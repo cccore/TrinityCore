@@ -81,7 +81,7 @@ public:
 	{
 	    //LuaVal args in a handler function is always a table
 		//Handler arguments index starts from 4
-		LuaVal &SaveVal = args.get[4];
+		LuaVal &SaveVal = args[4];
 
 		//MUST check if the value type is valid
 		if(!SaveVal.isstring())
