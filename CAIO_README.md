@@ -7,7 +7,7 @@ Currently CAIO only supports TrinityCore 3.3.5 branch. [Compare and review](http
 
 ## Supported AIO version
 
-AIO Version 1.7
+AIO Version 1.72
 
 ## Install
 
@@ -20,14 +20,13 @@ AIO Version 1.7
 
 ## Todo
 
-+ Use LuaVal as script/handler key type to allow types other than just string
 + Add CAIO `Init` time-out configuration
 + Add CAIO buffer time-out configuration
 + Add CAIO error time-out configuration
 + Add CAIO maximum cache size configuration
 + Implement Obfuscation
-+ Implement Compression
 + Add individual permissions for each CAIO command
++ Implement Compression
 
 ## API reference
 
@@ -124,36 +123,42 @@ https://github.com/Rochet2/smallfolk_cpp
 ```cpp
 class AIOScript : public ScriptObject
 {
+public:
+	virtual ~AIOScript();
+	
+	// Returns the key of this CAIO script
+	LuaVal GetKey() const;
+
 protected:
 	// Registers an AIO Handler script of scriptName
-	AIOScript(const char *scriptName);
+	AIOScript(const LuaVal &scriptKey);
 
 	// Registers a handler function to call when handling
-	// handlerName of this script.
-	void AddHandler(const char *handlerName, HandlerFunc function);
+	// handleKey of this script.
+	void AddHandler(const LuaVal &handlerKey, HandlerFunc function);
 
 	// Adds a client side handler to call and adds arguments
 	// to sends with it for AIO client initialization.
 	//
 	// You can add additional arguments to the handler by
 	// calling this function again
-	void AddInitArgs(const std::string &scriptName, const std::string &handlerName,
+	void AddInitArgs(const LuaVal &scriptKey, const LuaVal &handlerKey,
 		ArgFunc a1 = ArgFunc(), ArgFunc a2 = ArgFunc(), ArgFunc a3 = ArgFunc(),
 		ArgFunc a4 = ArgFunc(), ArgFunc a5 = ArgFunc(), ArgFunc a6 = ArgFunc());
 
 	// Adds a WoW addon file to the list of addons with a unique
-	// addon name to send on AIO client initialization.
-	// Returns true if addon was added, false if addon name is taken.
+	// addon key to send on AIO client initialization.
+	// Returns true if addon was added, false if addon key is taken.
 	//
 	// It is required to call World::ForceReloadPlayerAddons()
 	// if addons are added after server is fully initialized
 	// for online players to load the added addons.
 	bool AddAddon(const World::AIOAddon &addon);
 
-	// Returns pointer to an AIO script by its name and typename.
+	// Returns pointer to an AIO script by its key and typename.
 	// Returns null if scriptName doesn't exist or typename was incorrect.
 	template<class ScriptClass>
-	ScriptClass *GetScript(const std::string &scriptName);
+	ScriptClass *GetScript(const LuaVal &key);
 }
 ```
 
@@ -167,13 +172,13 @@ public:
 	AIOMsg();
 
 	//Creates a AIO message and adds one block
-	AIOMsg(const std::string &scriptName, const std::string &handlerName,
+	AIOMsg(const LuaVal &scriptKey, const LuaVal &handlerKey,
 		const LuaVal &a1 = LuaVal::nil(), const LuaVal &a2 = LuaVal::nil(), const LuaVal &a3 = LuaVal::nil(),
 		const LuaVal &a4 = LuaVal::nil(), const LuaVal &a5 = LuaVal::nil(), const LuaVal &a6 = LuaVal::nil());
 
 	//Adds another block
 	//Another block will call another handler in one message
-	AIOMsg &Add(const std::string &scriptName, const std::string &handlerName,
+	AIOMsg &Add(cconst LuaVal &scriptKey, const LuaVal &handlerKey,
 		const LuaVal &a1 = LuaVal::nil(), const LuaVal &a2 = LuaVal::nil(), const LuaVal &a3 = LuaVal::nil(),
 		const LuaVal &a4 = LuaVal::nil(), const LuaVal &a5 = LuaVal::nil(), const LuaVal &a6 = LuaVal::nil());
 
@@ -189,39 +194,43 @@ public:
 **Player.h**
 
 ```cpp
-//Returns whether AIO client has been initialized
-bool AIOInitialized() const;
+class Player
+{
+public:
+	//Returns whether AIO client has been initialized
+	bool AIOInitialized() const;
 
-// Sends an AIO message to the player
-// See: class AIOMsg
-void AIOMessage(AIOMsg &msg);
+	// Sends an AIO message to the player
+	// See: class AIOMsg
+	void AIOMessage(AIOMsg &msg);
 
-// Triggers an AIO script handler on the client
-// To trigger multiple handlers in one message or to send more
-// arguments use Player::AIOMessage
-void AIOHandle(const std::string &scriptName, const std::string &handlerName,
-	const LuaVal &a1 = LuaVal::nil(), const LuaVal &a2 = LuaVal::nil(), const LuaVal &a3 = LuaVal::nil(),
-	const LuaVal &a4 = LuaVal::nil(), const LuaVal &a5 = LuaVal::nil(), const LuaVal &a6 = LuaVal::nil());
+	// Triggers an AIO handler on the client
+	// To trigger multiple handlers in one message or to send more
+	// arguments use Player::AIOMessage
+	void AIOHandle(const LuaVal &scriptKey, const LuaVal &handlerKey,
+		const LuaVal &a1 = LuaVal::nil(), const LuaVal &a2 = LuaVal::nil(), const LuaVal &a3 = LuaVal::nil(),
+		const LuaVal &a4 = LuaVal::nil(), const LuaVal &a5 = LuaVal::nil(), const LuaVal &a6 = LuaVal::nil());
 
-// AIO can only understand smallfolk LuaVal::dumps() format
-// Handler functions are called by creating a table as below
-// {
-//     {n, ScriptName, HandlerName(optional), Arg1..N(optional) },
-//     {n, AnotherScriptName, AnotherHandlerName(optional), Arg1..N(optional) }
-// }
-// Where n is number of arguments including handler name as an argument
-void SendSimpleAIOMessage(const std::string &message);
+	// AIO can only understand smallfolk LuaVal::dumps() format
+	// Handler functions are called by creating a table as below
+	// {
+	//     {n, ScriptName, HandlerName(optional), Arg1..N(optional) },
+	//     {n, AnotherScriptName, AnotherHandlerName(optional), Arg1..N(optional) }
+	// }
+	// Where n is number of arguments including handler name as an argument
+	void SendSimpleAIOMessage(const std::string &message);
 
-// Forces reload on the player AIO addons
-// Syncs player AIO addons with server
-void ForceReloadAddons();
+	// Forces reload on the player AIO addons
+	// Syncs player AIO addons with server
+	void ForceReloadAddons();
 
-// Force reset on the player AIO addons
-// Player AIO addons and addon data is deleted and downloaded again
-void ForceResetAddons();
+	// Force reset on the player AIO addons
+	// Player AIO addons and addon data is deleted and downloaded again
+	void ForceResetAddons();
 
-bool isAIOInitOnCooldown() const;
-void setAIOIntOnCooldown(bool cd);
+	bool isAIOInitOnCooldown() const;
+	void setAIOIntOnCooldown(bool cd);
+}
 ```
 
 **World.h**

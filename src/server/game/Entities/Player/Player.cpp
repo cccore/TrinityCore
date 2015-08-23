@@ -20565,9 +20565,9 @@ void Player::AIOMessage(AIOMsg &msg)
 	SendSimpleAIOMessage(msg.dumps());
 }
 
-void Player::AIOHandle(const std::string &scriptName, const std::string &handlerName, const LuaVal &a1, const LuaVal &a2, const LuaVal &a3,const LuaVal &a4, const LuaVal &a5, const LuaVal &a6)
+void Player::AIOHandle(const LuaVal &scriptKey, const LuaVal &handlerKey, const LuaVal &a1, const LuaVal &a2, const LuaVal &a3, const LuaVal &a4, const LuaVal &a5, const LuaVal &a6)
 {
-	AIOMsg msg(scriptName, handlerName, a1, a2, a3, a4, a5, a6);
+	AIOMsg msg(scriptKey, handlerKey, a1, a2, a3, a4, a5, a6);
 	SendSimpleAIOMessage(msg.dumps());
 }
 

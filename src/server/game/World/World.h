@@ -35,7 +35,7 @@
 #include <set>
 #include <list>
 
-#define AIO_VERSION 1.7
+#define AIO_VERSION 1.72
 
 class Object;
 class WorldPacket;

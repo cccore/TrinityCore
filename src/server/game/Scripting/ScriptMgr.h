@@ -27,6 +27,8 @@
 #include "World.h"
 #include "Weather.h"
 
+#include "smallfolk_cpp/smallfolk.h"
+
 class AccountMgr;
 class AuctionHouseObject;
 class AuraScript;
@@ -870,8 +872,6 @@ class GroupScript : public ScriptObject
         virtual void OnDisband(Group* /*group*/) { }
 };
 
-class LuaVal;
-
 // ##################### Abstract AIO handler script #####################
 // Inherit AIOScript to make an AIO handler script
 //
@@ -960,7 +960,10 @@ class LuaVal;
 class AIOScript : public ScriptObject
 {
     public:
-		~AIOScript();
+		virtual ~AIOScript() { AIOScript::_scriptByKeyMap.erase(GetKey()); }
+
+		// Returns the key of this CAIO script
+		LuaVal GetKey() const { return _key; }
         bool IsDatabaseBound() const { return false; }
 
 		typedef std::function<void(Player*, const LuaVal&)> HandlerFunc;
@@ -968,46 +971,48 @@ class AIOScript : public ScriptObject
 
 	protected:
 		// Registers an AIO Handler script of scriptName
-		AIOScript(const char *scriptName);
+		AIOScript(const LuaVal &scriptKey);
 
 		// Registers a handler function to call when handling
-		// handlerName of this script.
-		void AddHandler(const char *handlerName, HandlerFunc function);
+		// handleKey of this script.
+		void AddHandler(const LuaVal &handlerKey, HandlerFunc function) { _handlerMap[handlerKey] = function; }
 
 		// Adds a client side handler to call and adds arguments
 		// to sends with it for AIO client initialization.
 		//
 		// You can add additional arguments to the handler by
 		// calling this function again
-		void AddInitArgs(const std::string &scriptName, const std::string &handlerName,
+		void AddInitArgs(const LuaVal &scriptKey, const LuaVal &handlerKey,
 			ArgFunc a1 = ArgFunc(), ArgFunc a2 = ArgFunc(), ArgFunc a3 = ArgFunc(),
 			ArgFunc a4 = ArgFunc(), ArgFunc a5 = ArgFunc(), ArgFunc a6 = ArgFunc());
 
 		// Adds a WoW addon file to the list of addons with a unique
-		// addon name to send on AIO client initialization.
-		// Returns true if addon was added, false if addon name is taken.
+		// addon key to send on AIO client initialization.
+		// Returns true if addon was added, false if addon key is taken.
 		//
 		// It is required to call World::ForceReloadPlayerAddons()
 		// if addons are added after server is fully initialized
 		// for online players to load the added addons.
-		bool AddAddon(const World::AIOAddon &addon);
+		bool AddAddon(const World::AIOAddon &addon) { return sWorld->AddAddon(addon); }
 
-		// Returns pointer to an AIO script by its name and typename.
+		// Returns pointer to an AIO script by its key and typename.
 		// Returns null if scriptName doesn't exist or typename was incorrect.
 		template<class ScriptClass>
-		ScriptClass *GetScript(const std::string &scriptName);
+		ScriptClass *GetScript(const LuaVal &key);
 
 		template<>
-		AIOScript *GetScript(const std::string &scriptName);
+		AIOScript *GetScript(const LuaVal &key);
 
 	private:
-		void OnHandle(Player *sender, const std::string &scriptName, const std::string &handlerName, const LuaVal &args);
+		void OnHandle(Player *sender, const LuaVal &handlerKey, const LuaVal &args);
 
-		typedef std::unordered_map<std::string, HandlerFunc> HandlerMapType;
+		LuaVal _key;
+
+		typedef std::unordered_map<LuaVal, HandlerFunc, LuaVal::LuaValHasher> HandlerMapType;
 		HandlerMapType _handlerMap;
 
-		typedef std::unordered_map<std::string, AIOScript*> AIOScriptByNameMap;
-		static AIOScriptByNameMap _scriptByNameMap;
+		typedef std::unordered_map<LuaVal, AIOScript*, LuaVal::LuaValHasher> AIOScriptByKeyMap;
+		static AIOScriptByKeyMap _scriptByKeyMap;
 
 		friend class ScriptMgr;
 };
@@ -1021,12 +1026,12 @@ class AIOHandlers : public AIOScript
 
 		struct InitHookInfo
 		{
-			std::string scriptName;
-			std::string handlerName;
+			LuaVal scriptKey;
+			LuaVal handlerKey;
 			std::list<AIOScript::ArgFunc> argsList;
 
-			InitHookInfo(const std::string &scriptName, const std::string &handlerName)
-				: scriptName(scriptName), handlerName(handlerName)
+			InitHookInfo(const LuaVal &scriptKey, const LuaVal &handlerKey)
+				: scriptKey(scriptKey), handlerKey(handlerKey)
 			{ }
 		};
 

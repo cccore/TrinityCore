@@ -1224,10 +1224,10 @@ class Player : public Unit, public GridObject<Player>
 		// See: class AIOMsg
 		void AIOMessage(AIOMsg &msg);
 
-		// Triggers an AIO script handler on the client
+		// Triggers an AIO handler on the client
 		// To trigger multiple handlers in one message or to send more
 		// arguments use Player::AIOMessage
-		void AIOHandle(const std::string &scriptName, const std::string &handlerName,
+		void AIOHandle(const LuaVal &scriptKey, const LuaVal &handlerKey,
 			const LuaVal &a1 = LuaVal::nil(), const LuaVal &a2 = LuaVal::nil(), const LuaVal &a3 = LuaVal::nil(),
 			const LuaVal &a4 = LuaVal::nil(), const LuaVal &a5 = LuaVal::nil(), const LuaVal &a6 = LuaVal::nil());
 
