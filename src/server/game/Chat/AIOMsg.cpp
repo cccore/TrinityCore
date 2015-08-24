@@ -10,7 +10,7 @@ AIOMsg &AIOMsg::Add(const LuaVal &scriptKey, const LuaVal &handlerKey, const Lua
 	LuaVal block(TTABLE);
 	uint32 nArgs = 1;
 
-	block[1];
+	block[1] = 0;
 	block[2] = scriptKey;
 	block[3] = handlerKey;
 
