@@ -29,6 +29,8 @@
 #include "SpellMgr.h"
 #include "Unit.h"
 
+#include "smallfolk_cpp/smallfolk.h"
+
 #include <limits>
 #include <string>
 #include <vector>
@@ -52,6 +54,7 @@ class PlayerMenu;
 class PlayerSocial;
 class SpellCastTargets;
 class UpdateMask;
+class AIOMsg;
 
 struct CharacterCustomizeInfo;
 
@@ -1213,6 +1216,40 @@ class Player : public Unit, public GridObject<Player>
         void TextEmote(std::string const& text, WorldObject const* = nullptr, bool = false) override;
         /// Handles whispers from Addons and players based on sender, receiver's guid and language.
         void Whisper(std::string const& text, Language language, Player* receiver, bool = false) override;
+
+		//Returns whether AIO client has been initialized
+		bool AIOInitialized() const { return m_aioInitialized; }
+
+		// Sends an AIO message to the player
+		// See: class AIOMsg
+		void AIOMessage(AIOMsg &msg);
+
+		// Triggers an AIO handler on the client
+		// To trigger multiple handlers in one message or to send more
+		// arguments use Player::AIOMessage
+		void AIOHandle(const LuaVal &scriptKey, const LuaVal &handlerKey,
+			const LuaVal &a1 = LuaVal::nil(), const LuaVal &a2 = LuaVal::nil(), const LuaVal &a3 = LuaVal::nil(),
+			const LuaVal &a4 = LuaVal::nil(), const LuaVal &a5 = LuaVal::nil(), const LuaVal &a6 = LuaVal::nil());
+
+		// AIO can only understand smallfolk LuaVal::dumps() format
+		// Handler functions are called by creating a table as below
+		// {
+		//     {n, ScriptName, HandlerName(optional), Arg1..N(optional) },
+		//     {n, AnotherScriptName, AnotherHandlerName(optional), Arg1..N(optional) }
+		// }
+		// Where n is number of arguments including handler name as an argument
+		void SendSimpleAIOMessage(const std::string &message);
+
+		// Forces reload on the player AIO addons
+		// Syncs player AIO addons with server
+		void ForceReloadAddons() { AIOHandle("AIO", "ForceReload"); }
+
+		// Force reset on the player AIO addons
+		// Player AIO addons and addon data is deleted and downloaded again
+		void ForceResetAddons() { AIOHandle("AIO", "ForceReset"); }
+
+		bool isAIOInitOnCooldown() const { return m_aioInitCd; }
+		void setAIOIntOnCooldown(bool cd) { m_aioInitCd = cd; m_aioInitTimer = 0; }
 
         /*********************************************************/
         /***                    STORAGE SYSTEM                 ***/
@@ -2637,6 +2674,13 @@ class Player : public Unit, public GridObject<Player>
         uint32 _pendingBindTimer;
 
         uint32 _activeCheats;
+
+		bool m_aioInitialized;
+		bool m_aioInitCd;
+		uint32 m_aioInitTimer;
+		uint16 m_messageIdIndex;
+
+		friend class AIOHandlers;
 };
 
 void AddItemsSetItem(Player* player, Item* item);

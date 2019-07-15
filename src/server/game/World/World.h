@@ -35,12 +35,17 @@
 #include <set>
 #include <list>
 
+#define AIO_VERSION 1.72
+
 class Object;
 class WorldPacket;
 class WorldSession;
 class Player;
 class WorldSocket;
 class SystemMgr;
+
+class LuaVal;
+class AIOMsg;
 
 // ServerMessages.dbc
 enum ServerMessageType
@@ -161,6 +166,8 @@ enum WorldBoolConfigs
     CONFIG_ALLOW_TRACK_BOTH_RESOURCES,
     CONFIG_CALCULATE_CREATURE_ZONE_AREA_DATA,
     CONFIG_CALCULATE_GAMEOBJECT_ZONE_AREA_DATA,
+	CONFIG_AIO_OBFUSCATE,
+	CONFIG_AIO_COMPRESS,
     BOOL_CONFIG_VALUE_COUNT
 };
 
@@ -347,6 +354,7 @@ enum WorldIntConfigs
     CONFIG_CHARTER_COST_ARENA_5v5,
     CONFIG_NO_GRAY_AGGRO_ABOVE,
     CONFIG_NO_GRAY_AGGRO_BELOW,
+	CONFIG_AIO_MAXPARTS,
     INT_CONFIG_VALUE_COUNT
 };
 
@@ -761,6 +769,76 @@ class World
 
         void ReloadRBAC();
 
+		struct AIOAddon
+		{
+			std::string name;
+			std::string code;
+			std::string file;
+			uint32 crc;
+			uint32 permission;
+
+			// AIOAddon container constructor
+			// Permission 195 will load the addon on every player
+			AIOAddon(const std::string &addonName, const std::string &addonFile, uint32 permission = 195)
+				: name(addonName), file(addonFile), permission(permission),
+				crc(0)
+			{ }
+		};
+
+		// AIO prefix configured in worldserver.conf
+		std::string GetAIOPrefix() const { return m_aioprefix; }
+
+		// AIO client LUA files path configured in worldserver.conf
+		std::string GetAIOClientScriptPath() const { return m_aioclientpath; }
+
+		// Forces reload on all player AIO addons
+		// Syncs player AIO addons with server
+		void ForceReloadPlayerAddons(uint32 permission = 195);
+
+		// Forces reset on all player AIO addons
+		// Player AIO addons and addon data is deleted and downloaded again
+		void ForceResetPlayerAddons(uint32 permission = 195);
+
+		// Sends an AIO message to all players
+		// See: class AIOMsg
+		void AIOMessageAll(AIOMsg &msg, uint32 permission = 195);
+
+		// Sends a simple string message to all players
+
+		// AIO can only understand smallfolk LuaVal::dumps() format
+		// Handler functions are called by creating a table as below
+		// {
+		//     {n, ScriptName, HandlerName(optional), Arg1..N(optional) },
+		//     {n, AnotherScriptName, AnotherHandlerName(optional), Arg1..N(optional) }
+		// }
+		// Where n is number of arguments including handler name as a argument
+		void SendAllSimpleAIOMessage(const std::string &message, uint32 permission = 195);
+
+		// Reloads client side AIO addon files and force reloads
+		// all player AIO addons
+		// Returns true if successful, false if an error occurred
+		bool ReloadAddons();
+		
+		// Adds a WoW AIO addon file to the list of addons with a unique
+		// addon name to send on AIO client initialization.
+		// Returns true if addon was added, false if addon name is already taken
+		//
+		// It is required to call World::ForceReloadPlayerAddons()
+		// if addons are added after server is fully initialized
+		// for online players to load the added addons.
+		bool AddAddon(const AIOAddon &addon);
+
+		// Removes an addon from addon list and force reloads affected players
+		// Returns permission id if an addon was removed, 0 if addon not found
+		//
+		// It is required to call World::ForceReloadPlayerAddons()
+		// if addons are added after server is fully initialized
+		// for online players to load the added addons.
+		uint32 RemoveAddon(const std::string &addonName);
+
+		// For internal use only
+		size_t PrepareClientAddons(const LuaVal &clientData, LuaVal &addonsTable, LuaVal &cacheTable, Player *forPlayer) const;
+
     protected:
         void _UpdateGameTime();
         // callback for UpdateRealmCharacters
@@ -863,6 +941,13 @@ class World
 
         void ProcessQueryCallbacks();
         std::deque<std::future<PreparedQueryResult>> m_realmCharCallbacks;
+
+		typedef std::list<World::AIOAddon> AddonCodeListType;
+		AddonCodeListType m_AddonList;
+		std::string m_aioprefix;
+		std::string m_aioclientpath;
+
+		friend class AIOScript;
 };
 
 extern uint32 realmID;

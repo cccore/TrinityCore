@@ -77,6 +77,7 @@ void AddSC_tele_commandscript();
 void AddSC_ticket_commandscript();
 void AddSC_titles_commandscript();
 void AddSC_wp_commandscript();
+void AddSC_caio_commandscript();
 
 #ifdef SCRIPTS
 //world
@@ -706,6 +707,7 @@ void AddScripts()
     AddBattlegroundScripts();
     AddOutdoorPvPScripts();
     AddCustomScripts();
+	AddAIOScripts();
 #endif
 }
 
@@ -769,6 +771,7 @@ void AddCommandScripts()
     AddSC_ticket_commandscript();
     AddSC_titles_commandscript();
     AddSC_wp_commandscript();
+	AddSC_caio_commandscript();
 }
 
 void AddWorldScripts()
@@ -1421,7 +1424,20 @@ void AddBattlegroundScripts()
 void AddCustomScripts()
 {
 #ifdef SCRIPTS
-    /* This is where custom scripts should be added. */
+	/* This is where custom scripts should be added. */
+
+#endif
+}
+
+#ifdef SCRIPTS
+/* This is where AIO scripts' loading functions should be declared. */
+
+#endif
+
+void AddAIOScripts()
+{
+#ifdef SCRIPTS
+	/* This is where AIO scripts should be added. */
 
 #endif
 }
